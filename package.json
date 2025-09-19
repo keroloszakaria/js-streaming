@@ -25,7 +25,7 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && cp -r public dist/",
     "dev": "tsup --watch",
     "demo": "npm run build && npx http-server -p 8080 -c-1 ."
   },
