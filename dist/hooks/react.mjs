@@ -1,44 +1,23 @@
 import {
   createStream
-} from "../chunk-Z32DF6OG.mjs";
+} from "../chunk-V6YMHTDE.mjs";
 
 // src/hooks/react.ts
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 function useStream(opts) {
-  const apiRef = useRef(null);
-  const [messages, setMessages] = useState([]);
+  const [stream, setStream] = useState(null);
   const [status, setStatus] = useState("idle");
-  const [error, setError] = useState(null);
-  const [isOpen, setIsOpen] = useState(false);
-  if (!apiRef.current) {
-    apiRef.current = createStream(opts);
-    setStatus(apiRef.current.state.status);
-    setIsOpen(apiRef.current.state.isOpen);
-  }
+  const [messages, setMessages] = useState([]);
   useEffect(() => {
-    const api = apiRef.current;
-    const offOpen = api.on("open", () => setIsOpen(true));
-    const offClose = api.on("close", () => setIsOpen(false));
-    const offStatus = api.on("status", (s) => setStatus(s));
-    const offError = api.on("error", (e) => setError(e));
-    const offMsg = api.on(
-      "message",
-      (m) => setMessages((prev) => [...prev, m])
-    );
-    api.open();
+    const s = createStream(opts);
+    s.on("status", (st) => setStatus(st));
+    s.on("message", (msg) => setMessages((prev) => [...prev, msg]));
+    setStream(s);
     return () => {
-      offOpen();
-      offClose();
-      offStatus();
-      offError();
-      offMsg();
-      api.close();
+      s.close();
     };
-  }, []);
-  return useMemo(
-    () => ({ ...apiRef.current, messages, status, error, isOpen }),
-    [messages, status, error, isOpen]
-  );
+  }, [opts]);
+  return { stream, status, messages };
 }
 export {
   useStream

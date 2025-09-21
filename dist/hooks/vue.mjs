@@ -1,42 +1,23 @@
 import {
   createStream
-} from "../chunk-Z32DF6OG.mjs";
+} from "../chunk-V6YMHTDE.mjs";
 
 // src/hooks/vue.ts
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 function useStream(opts) {
-  const api = createStream(opts);
+  const stream = ref(null);
+  const status = ref("idle");
   const messages = ref([]);
-  const status = ref(api.state.status);
-  const error = ref(null);
-  const isOpen = ref(api.state.isOpen);
-  const offOpen = api.on("open", () => {
-    isOpen.value = true;
-  });
-  const offClose = api.on("close", () => {
-    isOpen.value = false;
-  });
-  const offStatus = api.on("status", (s) => {
-    status.value = s;
-  });
-  const offError = api.on("error", (e) => {
-    error.value = e;
-  });
-  const offMsg = api.on("message", (m) => {
-    messages.value = [...messages.value, m];
-  });
   onMounted(() => {
-    api.open();
+    const s = createStream(opts);
+    s.on("status", (st) => status.value = st);
+    s.on("message", (msg) => messages.value.push(msg));
+    stream.value = s;
   });
-  onUnmounted(() => {
-    offOpen();
-    offClose();
-    offStatus();
-    offError();
-    offMsg();
-    api.close();
+  onBeforeUnmount(() => {
+    stream.value?.close();
   });
-  return { ...api, messages, status, error, isOpen };
+  return { stream, status, messages };
 }
 export {
   useStream

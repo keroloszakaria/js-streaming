@@ -17,6 +17,13 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-dark.min.css"
     />
     <link rel="stylesheet" href="styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "socket.io-client": "https://cdn.skypack.dev/socket.io-client"
+        }
+      }
+    </script>
 
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/0.5.14/hls.js"
@@ -59,8 +66,8 @@
           <h1>One Library, Every Protocol</h1>
           <p>
             The most advanced JavaScript streaming library. Support WebSocket,
-            SSE, HTTP streaming, long-polling, HLS video, and WebRTC with a
-            single, unified API.
+            SSE, HTTP streaming, long-polling, HLS video, WebRTC, and Socket.IO
+            with a single, unified API.
           </p>
           <div class="hero-buttons">
             <a href="#demo" class="btn btn-primary">🚀 Try Live Demo</a>
@@ -68,7 +75,7 @@
           </div>
           <div class="stats">
             <div class="stat-card">
-              <span class="stat-number">6</span>
+              <span class="stat-number">7</span>
               <span class="stat-label">Protocols Supported</span>
             </div>
             <div class="stat-card">
@@ -82,6 +89,10 @@
             <div class="stat-card">
               <span class="stat-number">100%</span>
               <span class="stat-label">TypeScript</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-number" id="downloadCount">--</span>
+              <span class="stat-label">Monthly Downloads</span>
             </div>
           </div>
         </div>
@@ -102,91 +113,37 @@
           <div class="protocol-card" data-protocol="websocket">
             <div class="protocol-icon">🔌</div>
             <h3>WebSocket</h3>
-            <p>
-              Full-duplex real-time communication with automatic reconnection
-              and message buffering.
-            </p>
-            <ul class="protocol-features">
-              <li>Bidirectional messaging</li>
-              <li>Low latency communication</li>
-              <li>Binary & text support</li>
-              <li>Connection pooling</li>
-            </ul>
+            <p>Full-duplex communication with reconnection & buffering.</p>
           </div>
-
           <div class="protocol-card" data-protocol="sse">
             <div class="protocol-icon">📡</div>
             <h3>Server-Sent Events</h3>
-            <p>
-              Efficient server-to-client streaming with built-in reconnection
-              and event routing.
-            </p>
-            <ul class="protocol-features">
-              <li>Native browser support</li>
-              <li>Automatic reconnection</li>
-              <li>Event-based messaging</li>
-              <li>HTTP/2 compatible</li>
-            </ul>
+            <p>Efficient one-way server-to-client streaming.</p>
           </div>
-
           <div class="protocol-card" data-protocol="http">
             <div class="protocol-icon">🌊</div>
             <h3>HTTP Streaming</h3>
-            <p>
-              Stream data over regular HTTP connections with chunked transfer
-              encoding support.
-            </p>
-            <ul class="protocol-features">
-              <li>Universal compatibility</li>
-              <li>Chunked streaming</li>
-              <li>Custom headers support</li>
-              <li>Progress tracking</li>
-            </ul>
+            <p>Chunked transfer encoding over HTTP connections.</p>
           </div>
-
           <div class="protocol-card" data-protocol="longpolling">
             <div class="protocol-icon">🔄</div>
             <h3>Long Polling</h3>
-            <p>
-              Simulate real-time communication with intelligent polling and
-              backoff strategies.
-            </p>
-            <ul class="protocol-features">
-              <li>Fallback compatibility</li>
-              <li>Smart polling intervals</li>
-              <li>Error recovery</li>
-              <li>Resource efficient</li>
-            </ul>
+            <p>Fallback strategy with intelligent polling intervals.</p>
           </div>
-
           <div class="protocol-card" data-protocol="hls">
             <div class="protocol-icon">🎥</div>
-            <h3>HLS Video Streaming</h3>
-            <p>
-              HTTP Live Streaming with native Safari support and hls.js fallback
-              for other browsers.
-            </p>
-            <ul class="protocol-features">
-              <li>Adaptive bitrate</li>
-              <li>Cross-platform support</li>
-              <li>Native & hls.js fallback</li>
-              <li>Live & VOD streaming</li>
-            </ul>
+            <h3>HLS Video</h3>
+            <p>Adaptive bitrate video streaming with hls.js fallback.</p>
           </div>
-
           <div class="protocol-card" data-protocol="webrtc">
             <div class="protocol-icon">🚀</div>
-            <h3>WebRTC Data Channels</h3>
-            <p>
-              Peer-to-peer real-time communication with ultra-low latency and
-              media streaming support.
-            </p>
-            <ul class="protocol-features">
-              <li>Peer-to-peer connection</li>
-              <li>Ultra-low latency</li>
-              <li>Media streaming</li>
-              <li>NAT traversal</li>
-            </ul>
+            <h3>WebRTC</h3>
+            <p>P2P real-time data channels & media streaming.</p>
+          </div>
+          <div class="protocol-card" data-protocol="socketio">
+            <div class="protocol-icon">⚡</div>
+            <h3>Socket.IO</h3>
+            <p>Event-based real-time communication with namespaces.</p>
           </div>
         </div>
       </div>
@@ -198,11 +155,9 @@
         <div class="section-header">
           <h2 class="section-title">Interactive Demo</h2>
           <p class="section-subtitle">
-            Test all streaming protocols with real-time monitoring and live
-            configuration
+            Test all streaming protocols with real-time monitoring
           </p>
         </div>
-
         <div class="demo-container">
           <div class="demo-tabs">
             <button class="demo-tab active" data-protocol="websocket">
@@ -215,13 +170,14 @@
             </button>
             <button class="demo-tab" data-protocol="hls">🎥 HLS</button>
             <button class="demo-tab" data-protocol="webrtc">🚀 WebRTC</button>
+            <button class="demo-tab" data-protocol="socketio">
+              ⚡ Socket.IO
+            </button>
           </div>
-
           <div class="demo-content">
             <!-- Controls -->
             <div class="demo-panel">
               <h4>🎛️ Configuration</h4>
-
               <div class="form-group">
                 <label class="form-label">Stream URL</label>
                 <input
@@ -231,7 +187,6 @@
                   value="wss://echo.websocket.org"
                 />
               </div>
-
               <div class="form-group">
                 <label class="form-label">Auto Reconnect</label>
                 <select class="form-control" id="autoReconnect">
@@ -239,7 +194,6 @@
                   <option value="false">Disabled</option>
                 </select>
               </div>
-
               <div class="form-group">
                 <label class="form-label">Max Retries</label>
                 <input
@@ -251,13 +205,9 @@
                   max="20"
                 />
               </div>
-
-              <!-- Video Container for HLS -->
               <div class="video-container" id="videoContainer">
                 <video id="videoPlayer" controls muted></video>
               </div>
-
-              <!-- Send Message -->
               <div
                 class="form-group"
                 id="sendMessageGroup"
@@ -274,8 +224,6 @@
                   <button class="btn btn-primary" id="sendBtn">Send</button>
                 </div>
               </div>
-
-              <!-- Control Buttons -->
               <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem">
                 <button class="btn btn-primary" id="connectBtn">Connect</button>
                 <button class="btn btn-secondary" id="disconnectBtn" disabled>
@@ -288,12 +236,10 @@
             <!-- Status & Logs -->
             <div class="demo-panel">
               <h4>📊 Live Monitoring</h4>
-
               <div class="status-indicator">
                 <div class="status-dot" id="statusDot"></div>
                 <span id="statusText">Disconnected</span>
               </div>
-
               <div
                 style="
                   display: grid;
@@ -347,7 +293,6 @@
                   </div>
                 </div>
               </div>
-
               <div style="margin-bottom: 1rem">
                 <label class="form-label">Activity Log</label>
                 <div class="logs" id="logContainer">
@@ -372,10 +317,9 @@
         <div class="section-header">
           <h2 class="section-title">Code Examples</h2>
           <p class="section-subtitle">
-            Ready-to-use examples for all frameworks and use cases
+            Ready-to-use examples for all frameworks
           </p>
         </div>
-
         <div class="examples-nav">
           <a class="example-tab active" data-example="basic">Basic Usage</a>
           <a class="example-tab" data-example="react">React Hook</a>
@@ -384,16 +328,14 @@
           <a class="example-tab" data-example="webrtc">WebRTC</a>
           <a class="example-tab" data-example="advanced">Advanced</a>
         </div>
-
         <div class="example-container">
           <div class="example-header">
             <span class="example-title" id="exampleTitle">Basic Usage</span>
             <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
           </div>
           <div class="example-code">
-            <pre
-              id="codeBlock"
-            ><code class="language-javascript">// Install the library
+            <pre id="codeBlock"><code class="language-javascript">
+// Install the library
 npm install js-streaming
 
 // Basic WebSocket example
@@ -406,26 +348,16 @@ const stream = createStream({
   maxRetries: 5
 });
 
-// Listen for events
-stream.on('open', () => {
-  console.log('✅ Connected!');
-});
+// Events
+stream.on('open', () => console.log('✅ Connected!'));
+stream.on('message', (data) => console.log('📨', data));
+stream.on('error', (err) => console.error('❌', err));
+stream.on('close', () => console.log('🔴 Disconnected'));
 
-stream.on('message', (data) => {
-  console.log('📨 Received:', data);
-});
-
-stream.on('error', (error) => {
-  console.error('❌ Error:', error);
-});
-
-stream.on('close', () => {
-  console.log('🔴 Disconnected');
-});
-
-// Connect and send data
+// Connect & send
 await stream.open();
-stream.send({ message: 'Hello World!' });</code></pre>
+stream.send({ message: 'Hello World!' });
+</code></pre>
           </div>
         </div>
       </div>
@@ -455,7 +387,6 @@ stream.send({ message: 'Hello World!' });</code></pre>
             </div>
           </div>
         </div>
-
         <div class="footer-bottom">
           <p>&copy; 2024 js-streaming. Released under the MIT License.</p>
         </div>
@@ -463,5 +394,21 @@ stream.send({ message: 'Hello World!' });</code></pre>
     </footer>
 
     <script type="module" src="main.js"></script>
+    <script>
+      async function updateDownloads() {
+        try {
+          const res = await fetch(
+            "https://api.npmjs.org/downloads/point/last-month/js-streaming"
+          );
+          const data = await res.json();
+          document.getElementById("downloadCount").textContent =
+            data.downloads.toLocaleString();
+        } catch (err) {
+          console.error("Failed to fetch downloads:", err);
+          document.getElementById("downloadCount").textContent = "N/A";
+        }
+      }
+      updateDownloads();
+    </script>
   </body>
 </html>

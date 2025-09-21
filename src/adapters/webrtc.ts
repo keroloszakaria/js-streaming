@@ -1,51 +1,36 @@
 import { StreamCore } from "../core/Stream";
+import { WebRTCOptions, StreamAPI } from "../core/types";
 
-import { BaseOptions } from "../core/types";
-
-export interface WebRTCOptions extends BaseOptions {
-  type: "webrtc";
-
-  createPeer: () => RTCPeerConnection;
-
-  onTrack: (stream: MediaStream) => void; // Deliver remote media so the host app can attach it
-
-  dataChannelLabel?: string;
-}
-
-export function webrtcAdapter(core: StreamCore, opts: WebRTCOptions) {
+export function webrtcAdapter(
+  core: StreamCore,
+  opts: WebRTCOptions
+): StreamAPI {
   let pc: RTCPeerConnection | null = null;
-
-  let dc: RTCDataChannel | null = null;
+  let channel: RTCDataChannel | null = null; // 🟢 fix: بدل sendChannel
 
   return {
-    async open() {
-      pc = opts.createPeer();
+    open: async () => {
+      pc = new RTCPeerConnection();
+      channel = pc.createDataChannel("data");
 
-      dc = pc.createDataChannel(opts.dataChannelLabel || "data");
-
-      dc.onopen = () => core._onOpen();
-
-      dc.onmessage = (e) => core._onMessage(e.data);
-
-      dc.onerror = () => core._onError(new Error("WebRTC data channel error"));
-
-      dc.onclose = () => core._onClose();
-
-      pc.ontrack = (e) => opts.onTrack(e.streams[0]);
-
-      // Signaling is handled by the host application outside this adapter
+      channel.onopen = () => core.emit("open");
+      channel.onclose = () => core.emit("close");
+      channel.onerror = (e) => core.emit("error", e as any);
+      channel.onmessage = (e) => core.emit("message", e.data);
     },
-
-    async close() {
-      dc?.close();
-
+    close: async () => {
       pc?.close();
-
-      core._onClose();
+      core.emit("close");
     },
-
-    send(data: unknown) {
-      dc?.send(typeof data === "string" ? data : JSON.stringify(data));
+    send: (d: unknown) => {
+      if (channel && channel.readyState === "open") {
+        channel.send(typeof d === "string" ? d : JSON.stringify(d));
+      }
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
     },
   };
 }

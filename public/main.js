@@ -1,4 +1,5 @@
 import { javascript, jsx, vue, hls, webrtc, advanced } from "./examples.js";
+import { createStream } from "../dist/index.mjs";
 
 // Global variables
 let currentStream = null;
@@ -43,7 +44,14 @@ const protocols = {
     canSend: true,
     hasVideo: false,
   },
+  socketio: {
+    name: "Socket.IO",
+    url: "http://localhost:3000",
+    canSend: true,
+    hasVideo: false,
+  },
 };
+
 // Example Here
 
 // Code examples
@@ -263,6 +271,18 @@ class MockStream {
         latency: Math.floor(Math.random() * 50) + "ms",
         timestamp: new Date().toISOString(),
       }),
+      socketio: () => ({
+        event: randomChoice(["chat", "notification", "update"]),
+        data: {
+          user: randomChoice(["Alice", "Bob", "Charlie"]),
+          message: randomChoice([
+            "Hello from Socket.IO!",
+            "This is a test event",
+            "Real-time update received",
+          ]),
+        },
+        timestamp: new Date().toISOString(),
+      }),
     };
 
     const generator = generators[this.config.type] || generators.websocket;
@@ -420,17 +440,7 @@ async function connect() {
   const autoReconnectSelect = document.getElementById("autoReconnect");
   const maxRetriesInput = document.getElementById("maxRetries");
 
-  if (!urlInput || !autoReconnectSelect || !maxRetriesInput) {
-    log("error", "Missing form elements");
-    return;
-  }
-
   const url = urlInput.value.trim();
-  if (!url) {
-    log("error", "Please enter a valid URL");
-    return;
-  }
-
   const autoReconnect = autoReconnectSelect.value === "true";
   const maxRetries = parseInt(maxRetriesInput.value) || 5;
 
@@ -438,30 +448,44 @@ async function connect() {
     await disconnect();
   }
 
-  const config = { type: protocol, url, autoReconnect, maxRetries };
-
   try {
     if (protocol === "hls") {
-      await connectHLS(config);
-    } else {
-      currentStream = new MockStream(config);
-
-      currentStream.on("open", () => {
-        startTime = Date.now();
-        toggleConnectButtons(true);
-      });
-
-      currentStream.on("close", () => {
-        startTime = null;
-        toggleConnectButtons(false);
-      });
-
-      currentStream.on("error", (error) => {
-        console.error("Stream error:", error);
-      });
-
-      await currentStream.open();
+      await connectHLS({ url });
+      return;
     }
+
+    currentStream = createStream({
+      type: protocol, // "websocket" | "sse" | "http" | "long-polling" | "hls" | "webrtc" | "socketio"
+      url,
+      autoReconnect,
+      maxRetries,
+    });
+
+    currentStream.on("open", () => {
+      log("success", `${protocol.toUpperCase()} connected`);
+      updateStatus("connected");
+      startTime = Date.now();
+      toggleConnectButtons(true);
+    });
+
+    currentStream.on("close", () => {
+      log("warning", "Disconnected");
+      updateStatus("disconnected");
+      toggleConnectButtons(false);
+    });
+
+    currentStream.on("error", (err) => {
+      log("error", `Error: ${err.message}`);
+      updateStatus("error");
+    });
+
+    // 🟢 Events
+    currentStream.on("message", (msg) => {
+      log("success", `Message: ${JSON.stringify(msg)}`);
+      updateMessageCount();
+    });
+
+    await currentStream.open();
   } catch (error) {
     log("error", `Connection failed: ${error.message}`);
   }
@@ -541,11 +565,16 @@ async function connectHLS(config) {
 
 async function disconnect() {
   if (currentStream) {
-    await currentStream.close();
+    if (currentStream.disconnect) {
+      // Socket.IO
+      currentStream.disconnect();
+    } else if (currentStream.close) {
+      // MockStream
+      await currentStream.close();
+    }
     currentStream = null;
   }
 
-  // Reset video
   const video = document.getElementById("videoPlayer");
   if (video && video.src) {
     video.src = "";
@@ -568,7 +597,7 @@ function toggleConnectButtons(connected) {
 }
 
 function sendMessage() {
-  if (!currentStream || !currentStream.isOpen) {
+  if (!currentStream) {
     log("warning", "Not connected");
     return;
   }
@@ -583,6 +612,8 @@ function sendMessage() {
     text: message,
     timestamp: new Date().toISOString(),
   });
+
+  log("info", `Sent: ${message}`);
   input.value = "";
 }
 

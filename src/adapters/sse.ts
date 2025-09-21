@@ -1,32 +1,32 @@
 import { StreamCore } from "../core/Stream";
-import { BaseOptions } from "../core/types";
+import { BaseOptions, StreamAPI } from "../core/types";
 
 export interface SSEOptions extends BaseOptions {
   type: "sse";
-  url: string;
-  withCredentials?: boolean;
 }
 
-export function sseAdapter(core: StreamCore, opts: SSEOptions) {
+export function sseAdapter(core: StreamCore, opts: SSEOptions): StreamAPI {
   let es: EventSource | null = null;
 
   return {
-    open() {
-      es = new EventSource(opts.url, {
-        withCredentials: !!opts.withCredentials,
-      });
-      es.onopen = () => core._onOpen();
-      es.onerror = () => core._onError(new Error("SSE error"));
-      es.onmessage = (e) => {
-        let data: unknown = e.data;
-        try {
-          data = JSON.parse(e.data);
-        } catch {}
-        core._onMessage(data);
-      };
+    open: async () => {
+      es = new EventSource(opts.url);
+
+      es.onopen = () => core.emit("open");
+      es.onerror = (err) => core.emit("error", err as any);
+      es.onmessage = (msg) => core.emit("message", msg.data);
     },
-    close() {
+    close: async () => {
       es?.close();
+      core.emit("close");
+    },
+    send: () => {
+      throw new Error("SSE does not support send()");
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
     },
   };
 }

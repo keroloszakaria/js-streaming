@@ -1,63 +1,47 @@
 import { StreamCore } from "../core/Stream";
-
-import { BaseOptions } from "../core/types";
+import { BaseOptions, StreamAPI } from "../core/types";
 
 export interface LongPollingOptions extends BaseOptions {
   type: "long-polling";
-
-  url: string;
-
-  intervalMs?: number; // Delay between polling attempts when the server responds immediately
-
-  requestInit?: RequestInit;
+  interval?: number;
 }
 
-export function longPollingAdapter(core: StreamCore, opts: LongPollingOptions) {
-  let stopped = false;
+export function longPollingAdapter(
+  core: StreamCore,
+  opts: LongPollingOptions
+): StreamAPI {
+  let active = false;
 
-  async function loop() {
-    while (!stopped) {
+  const poll = async () => {
+    while (active) {
       try {
-        const res = await fetch(opts.url, opts.requestInit);
-
-        const text = await res.text();
-
-        const lines = text.split(/\r?\n/).filter(Boolean);
-
-        for (const line of lines) {
-          let data: unknown = line;
-
-          try {
-            data = JSON.parse(line);
-          } catch {}
-
-          core._onMessage(data);
-        }
-
-        // If the server responds immediately, wait before the next poll
-
-        await new Promise((r) => setTimeout(r, opts.intervalMs ?? 3000));
-      } catch (e: any) {
-        core._onError(e);
-
-        await new Promise((r) => setTimeout(r, opts.intervalMs ?? 3000));
+        const res = await fetch(opts.url);
+        const data = await res.json();
+        core.emit("message", data);
+      } catch (err) {
+        core.emit("error", err as any);
       }
+      await new Promise((r) => setTimeout(r, opts.interval ?? 2000));
     }
-
-    core._onClose();
-  }
+  };
 
   return {
-    async open() {
-      stopped = false;
-
-      core._onOpen();
-
-      loop();
+    open: async () => {
+      active = true;
+      core.emit("open");
+      poll();
     },
-
-    async close() {
-      stopped = true;
+    close: async () => {
+      active = false;
+      core.emit("close");
+    },
+    send: () => {
+      throw new Error("Long polling does not support send()");
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
     },
   };
 }

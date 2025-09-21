@@ -1,105 +1,81 @@
-export type StreamType =
-  | "websocket"
-  | "sse"
-  | "http"
-  | "long-polling"
-  | "hls"
-  | "webrtc";
-
-// Stream lifecycle statuses exposed by the core
-
-export type StreamStatus =
-  | "idle"
-  | "connecting"
-  | "open"
-  | "closing"
-  | "closed"
-  | "error";
-
-// Generic configuration bag to avoid coupling to specific implementations
-
-export type AnyConfig = Record<string, unknown>;
-
-// HLS options expect the consumer to provide the target video element
-
-export type HLSConfig = Omit<AnyConfig, "type" | "video">;
-
-// WebRTC options wire up onTrack internally and support optional helpers
-
-export type WebRTCConfig = Omit<AnyConfig, "type" | "onTrack"> & {
-  attachVideo?: boolean;
-};
-
-export interface BaseOptions {
-  type: StreamType;
-
-  bufferLimit?: number;
-
-  autoReconnect?: boolean;
-
-  maxRetries?: number;
-
-  heartbeatMs?: number;
-
-  backoff?: {
-    baseMs?: number;
-
-    maxMs?: number;
-
-    factor?: number;
-
-    jitter?: boolean;
-  };
-}
-
-export type Message = unknown;
+export type StreamStatus = "idle" | "connecting" | "open" | "closed" | "error";
 
 export interface StreamState {
   status: StreamStatus;
-
-  error: Error | null;
-
-  messages: Message[];
-
-  isOpen: boolean;
+  retries: number;
 }
 
-export interface StreamAdapter {
-  open(): Promise<void> | void;
-
-  close(): Promise<void> | void;
-
-  send?(data: unknown): void; // Only protocols like WebSocket/WebRTC implement sending
+export interface ListenerMap {
+  open: []; // مفيش args
+  close: [reason?: string]; // Arg واحد اختياري
+  error: [Error]; // Arg واحد Error
+  message: [unknown]; // Arg واحد msg
+  status: [StreamStatus]; // Arg واحد status
 }
 
-export type ListenerMap = {
-  open: (() => void)[];
+export interface BaseOptions {
+  type: string;
+  url: string; // 🟢 fix: كل بروتوكول لازم يكون عنده url
+  autoReconnect?: boolean;
+  maxRetries?: number;
+}
 
-  close: (() => void)[];
+// ======================
+// All protocol options
+// ======================
+export interface WebSocketOptions extends BaseOptions {
+  type: "websocket";
+}
 
-  error: ((err: Error) => void)[];
+export interface SSEOptions extends BaseOptions {
+  type: "sse";
+}
 
-  message: ((msg: Message) => void)[];
+export interface HTTPStreamOptions extends BaseOptions {
+  type: "http";
+}
 
-  status: ((s: StreamStatus) => void)[];
-};
+export interface LongPollingOptions extends BaseOptions {
+  type: "long-polling";
+  interval?: number;
+}
 
-// send remains optional so receive-only protocols can conform to StreamAPI
+export interface HLSOptions extends BaseOptions {
+  type: "hls";
+}
+
+export interface WebRTCOptions extends BaseOptions {
+  type: "webrtc";
+}
+
+export interface SocketIOOptions extends BaseOptions {
+  type: "socketio";
+}
+
+// 🟢 Union type
+export type AnyOptions =
+  | WebSocketOptions
+  | SSEOptions
+  | HTTPStreamOptions
+  | LongPollingOptions
+  | HLSOptions
+  | WebRTCOptions
+  | SocketIOOptions;
 
 export interface StreamAPI {
-  open(): Promise<void>;
-
-  close(): Promise<void>;
-
-  send?(data: unknown): void;
+  open: () => Promise<void>;
+  close: () => Promise<void>;
+  send: (data: unknown) => void;
 
   on<T extends keyof ListenerMap>(
     evt: T,
-
-    cb: ListenerMap[T][number]
+    cb: (...args: ListenerMap[T]) => void
   ): () => void;
 
-  off<T extends keyof ListenerMap>(evt: T, cb: ListenerMap[T][number]): void;
+  off<T extends keyof ListenerMap>(
+    evt: T,
+    cb: (...args: ListenerMap[T]) => void
+  ): void;
 
   readonly state: Readonly<StreamState>;
 }

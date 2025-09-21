@@ -1,16 +1,9 @@
-import { createStream, StreamStatus, ListenerMap, StreamState } from '../index.js';
+import { A as AnyOptions, S as StreamAPI, a as StreamStatus } from '../types-DjihEgEp.js';
 
-declare function useStream<T = unknown>(opts: Parameters<typeof createStream>[0]): {
-    messages: T[];
+declare function useStream(opts: AnyOptions): {
+    stream: StreamAPI | null;
     status: StreamStatus;
-    error: Error | null;
-    isOpen: boolean;
-    open(): Promise<void>;
-    close(): Promise<void>;
-    send?(data: unknown): void;
-    on<T_1 extends keyof ListenerMap>(evt: T_1, cb: ListenerMap[T_1][number]): () => void;
-    off<T_1 extends keyof ListenerMap>(evt: T_1, cb: ListenerMap[T_1][number]): void;
-    state: Readonly<StreamState>;
+    messages: any[];
 };
 
 export { useStream };

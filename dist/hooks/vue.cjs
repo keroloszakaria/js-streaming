@@ -1,9 +1,7 @@
 "use strict";
-var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -17,14 +15,6 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/hooks/vue.ts
@@ -35,154 +25,75 @@ __export(vue_exports, {
 module.exports = __toCommonJS(vue_exports);
 var import_vue = require("vue");
 
-// src/core/backoff.ts
-function createBackoff(opts) {
-  const base = opts?.baseMs ?? 500;
-  const max = opts?.maxMs ?? 15e3;
-  const factor = opts?.factor ?? 2;
-  const jitter = opts?.jitter ?? true;
-  let attempt = 0;
-  return {
-    reset() {
-      attempt = 0;
-    },
-    next() {
-      const exp = Math.min(max, base * Math.pow(factor, attempt++));
-      return jitter ? Math.random() * exp : exp;
-    }
-  };
-}
-
 // src/core/Stream.ts
 var StreamCore = class {
   constructor(adapter, opts) {
-    this._state = {
-      status: "idle",
-      error: null,
-      messages: [],
-      isOpen: false
-    };
-    this.listeners = {
-      open: [],
-      close: [],
-      error: [],
-      message: [],
-      status: []
-    };
-    this.adapter = null;
-    this.retrying = false;
-    this.retries = 0;
-    this.backoff = createBackoff();
-    // hooks adapters will call:
-    this._onOpen = () => {
-      this.retries = 0;
-      this.backoff.reset();
-      this.setStatus("open");
-      this.emit("open");
-    };
-    this._onClose = () => {
-      this.setStatus("closed");
-      this.emit("close");
-      if (this.opts.autoReconnect && this.retries < (this.opts.maxRetries ?? 10)) {
-        this.retrying = true;
-        const delay = this.backoff.next();
-        setTimeout(() => this.open(), delay);
-      }
-    };
-    this._onError = (e) => this.setError(e);
-    this._onMessage = (m) => this.pushMessage(m);
     this.adapter = adapter;
-    this.opts = {
-      bufferLimit: 500,
-      autoReconnect: true,
-      maxRetries: 10,
-      ...opts
+    this.opts = opts;
+    // نخليها loose جوه الكلاس
+    this.listeners = {};
+    this.state = {
+      status: "idle",
+      retries: 0
     };
-    if (opts.backoff) this.backoff = createBackoff(opts.backoff);
   }
-  get state() {
-    return this._state;
-  }
-  setStatus(s) {
-    this._state.status = s;
-    this._state.isOpen = s === "open";
-    this.emit("status", s);
-  }
-  setError(e) {
-    this._state.error = e;
-    this.setStatus("error");
-    this.emit("error", e);
-  }
-  pushMessage(m) {
-    const limit = this.opts.bufferLimit;
-    const arr = this._state.messages;
-    arr.push(m);
-    if (arr.length > limit) arr.splice(0, arr.length - limit);
-    this.emit("message", m);
-  }
-  async open() {
-    if (!this.adapter) return;
-    this.setStatus("connecting");
-    try {
-      await this.adapter.open();
-    } catch (e) {
-      this.retries++;
-      this.setError(e);
-      if (this.opts.autoReconnect && this.retries <= (this.opts.maxRetries ?? 10)) {
-        const delay = this.backoff.next();
-        setTimeout(() => this.open(), delay);
-      }
+  emit(event, ...args) {
+    const cbs = this.listeners[event];
+    if (!cbs) return;
+    for (const cb of cbs) {
+      cb(...args);
     }
-  }
-  async close() {
-    this.setStatus("closing");
-    try {
-      await this.adapter?.close();
-    } finally {
-      this.setStatus("closed");
-    }
-  }
-  send(data) {
-    this.adapter?.send?.(data);
   }
   on(evt, cb) {
+    if (!this.listeners[evt]) {
+      this.listeners[evt] = [];
+    }
     this.listeners[evt].push(cb);
     return () => this.off(evt, cb);
   }
   off(evt, cb) {
     const arr = this.listeners[evt];
-    const i = arr.indexOf(cb);
-    if (i >= 0) arr.splice(i, 1);
+    if (!arr) return;
+    this.listeners[evt] = arr.filter((fn) => fn !== cb);
   }
-  emit(evt, payload) {
-    for (const cb of this.listeners[evt]) cb(payload);
+  async open() {
+    this.state.status = "connecting";
+    this.emit("status", "connecting");
+    await this.adapter.open();
+    this.state.status = "open";
+    this.emit("status", "open");
+  }
+  async close() {
+    this.state.status = "closed";
+    this.emit("status", "closed");
+    await this.adapter.close();
+  }
+  send(data) {
+    this.adapter.send(data);
   }
 };
 
 // src/adapters/websocket.ts
 function websocketAdapter(core, opts) {
-  let ws = null;
+  let socket = null;
   return {
-    open() {
-      ws = new WebSocket(opts.url, opts.protocols);
-      ws.onopen = () => core._onOpen();
-      ws.onclose = () => core._onClose();
-      ws.onerror = (ev) => core._onError(new Error("WebSocket error"));
-      ws.onmessage = (ev) => {
-        let data = ev.data;
-        try {
-          data = JSON.parse(ev.data);
-        } catch {
-        }
-        core._onMessage(data);
-      };
+    open: async () => {
+      socket = new WebSocket(opts.url);
+      socket.onopen = () => core.emit("open");
+      socket.onclose = () => core.emit("close");
+      socket.onerror = (err) => core.emit("error", err);
+      socket.onmessage = (msg) => core.emit("message", msg.data);
     },
-    close() {
-      ws?.close();
+    close: async () => {
+      socket?.close();
     },
-    send(data) {
-      const payload = typeof data === "string" ? data : JSON.stringify(data);
-      ws?.send(payload);
+    send: (d) => {
+      socket?.send(typeof d === "string" ? d : JSON.stringify(d));
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
     }
   };
 }
@@ -191,149 +102,112 @@ function websocketAdapter(core, opts) {
 function sseAdapter(core, opts) {
   let es = null;
   return {
-    open() {
-      es = new EventSource(opts.url, {
-        withCredentials: !!opts.withCredentials
-      });
-      es.onopen = () => core._onOpen();
-      es.onerror = () => core._onError(new Error("SSE error"));
-      es.onmessage = (e) => {
-        let data = e.data;
-        try {
-          data = JSON.parse(e.data);
-        } catch {
-        }
-        core._onMessage(data);
-      };
+    open: async () => {
+      es = new EventSource(opts.url);
+      es.onopen = () => core.emit("open");
+      es.onerror = (err) => core.emit("error", err);
+      es.onmessage = (msg) => core.emit("message", msg.data);
     },
-    close() {
+    close: async () => {
       es?.close();
+      core.emit("close");
+    },
+    send: () => {
+      throw new Error("SSE does not support send()");
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
     }
   };
 }
 
 // src/adapters/http.ts
 function httpStreamAdapter(core, opts) {
-  let ctrl = null;
+  let controller = null;
   return {
-    async open() {
-      ctrl = new AbortController();
-      try {
-        const res = await fetch(opts.url, {
-          ...opts.requestInit || {},
-          signal: ctrl.signal
-        });
-        if (!res.body) throw new Error("No body for HTTP stream");
-        core._onOpen();
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          chunk.split(/\r?\n/).filter(Boolean).forEach((line) => {
-            let data = line;
-            try {
-              data = JSON.parse(line);
-            } catch {
-            }
-            core._onMessage(data);
-          });
-        }
-        core._onClose();
-      } catch (e) {
-        if (e.name !== "AbortError") core._onError(e);
+    open: async () => {
+      controller = new AbortController();
+      const res = await fetch(opts.url, { signal: controller.signal });
+      if (!res.body) throw new Error("No response body");
+      const reader = res.body.getReader();
+      core.emit("open");
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        core.emit("message", new TextDecoder().decode(value));
       }
+      core.emit("close");
     },
-    async close() {
-      ctrl?.abort();
+    close: async () => {
+      controller?.abort();
+      core.emit("close");
+    },
+    send: () => {
+      throw new Error("HTTP streaming does not support send()");
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
     }
   };
 }
 
 // src/adapters/longPolling.ts
 function longPollingAdapter(core, opts) {
-  let stopped = false;
-  async function loop() {
-    while (!stopped) {
+  let active = false;
+  const poll = async () => {
+    while (active) {
       try {
-        const res = await fetch(opts.url, opts.requestInit);
-        const text = await res.text();
-        const lines = text.split(/\r?\n/).filter(Boolean);
-        for (const line of lines) {
-          let data = line;
-          try {
-            data = JSON.parse(line);
-          } catch {
-          }
-          core._onMessage(data);
-        }
-        await new Promise((r) => setTimeout(r, opts.intervalMs ?? 3e3));
-      } catch (e) {
-        core._onError(e);
-        await new Promise((r) => setTimeout(r, opts.intervalMs ?? 3e3));
+        const res = await fetch(opts.url);
+        const data = await res.json();
+        core.emit("message", data);
+      } catch (err) {
+        core.emit("error", err);
       }
+      await new Promise((r) => setTimeout(r, opts.interval ?? 2e3));
     }
-    core._onClose();
-  }
+  };
   return {
-    async open() {
-      stopped = false;
-      core._onOpen();
-      loop();
+    open: async () => {
+      active = true;
+      core.emit("open");
+      poll();
     },
-    async close() {
-      stopped = true;
+    close: async () => {
+      active = false;
+      core.emit("close");
+    },
+    send: () => {
+      throw new Error("Long polling does not support send()");
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
     }
   };
 }
 
 // src/adapters/hls.ts
 function hlsAdapter(core, opts) {
-  let HlsLib;
-  let hls;
   return {
-    async open() {
-      try {
-        if (opts.video.canPlayType("application/vnd.apple.mpegURL")) {
-          opts.video.src = opts.url;
-          opts.video.addEventListener("loadedmetadata", () => {
-            core._onOpen();
-            core._onMessage({ event: "hls:loaded" });
-          });
-          opts.video.addEventListener(
-            "error",
-            () => core._onError(new Error("HLS video error"))
-          );
-          return;
-        }
-        const mod = await import("hls.js");
-        HlsLib = mod.default || mod;
-        if (!HlsLib.isSupported()) throw new Error("hls.js not supported");
-        hls = new HlsLib();
-        hls.on(
-          HlsLib.Events.ERROR,
-          (_e, data) => core._onError(new Error(`HLS: ${data?.details || "error"}`))
-        );
-        hls.on(
-          HlsLib.Events.MANIFEST_PARSED,
-          () => core._onMessage({ event: "hls:manifest_parsed" })
-        );
-        hls.loadSource(opts.url);
-        hls.attachMedia(opts.video);
-        core._onOpen();
-      } catch (e) {
-        core._onError(e);
-      }
+    open: async () => {
+      core.emit("open");
+      core.emit("message", { url: opts.url });
     },
-    async close() {
-      try {
-        if (hls) hls.destroy();
-      } catch {
-      }
-      opts.video.removeAttribute("src");
-      opts.video.load();
-      core._onClose();
+    close: async () => {
+      core.emit("close");
+    },
+    send: () => {
+      throw new Error("HLS does not support send()");
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
     }
   };
 }
@@ -341,24 +215,60 @@ function hlsAdapter(core, opts) {
 // src/adapters/webrtc.ts
 function webrtcAdapter(core, opts) {
   let pc = null;
-  let dc = null;
+  let channel = null;
   return {
-    async open() {
-      pc = opts.createPeer();
-      dc = pc.createDataChannel(opts.dataChannelLabel || "data");
-      dc.onopen = () => core._onOpen();
-      dc.onmessage = (e) => core._onMessage(e.data);
-      dc.onerror = () => core._onError(new Error("WebRTC data channel error"));
-      dc.onclose = () => core._onClose();
-      pc.ontrack = (e) => opts.onTrack(e.streams[0]);
+    open: async () => {
+      pc = new RTCPeerConnection();
+      channel = pc.createDataChannel("data");
+      channel.onopen = () => core.emit("open");
+      channel.onclose = () => core.emit("close");
+      channel.onerror = (e) => core.emit("error", e);
+      channel.onmessage = (e) => core.emit("message", e.data);
     },
-    async close() {
-      dc?.close();
+    close: async () => {
       pc?.close();
-      core._onClose();
+      core.emit("close");
     },
-    send(data) {
-      dc?.send(typeof data === "string" ? data : JSON.stringify(data));
+    send: (d) => {
+      if (channel && channel.readyState === "open") {
+        channel.send(typeof d === "string" ? d : JSON.stringify(d));
+      }
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
+    }
+  };
+}
+
+// src/adapters/socketio.ts
+var import_socket = require("socket.io-client");
+function socketioAdapter(core, opts) {
+  const socket = (0, import_socket.io)(opts.url, {
+    reconnection: opts.autoReconnect ?? true,
+    reconnectionAttempts: opts.maxRetries ?? 5
+  });
+  socket.on("connect", () => core.emit("open"));
+  socket.on("disconnect", (reason) => core.emit("close", reason));
+  socket.on("connect_error", (err) => core.emit("error", err));
+  socket.onAny((event, data) => {
+    core.emit("message", { event, data });
+  });
+  return {
+    open: async () => {
+      socket.connect();
+    },
+    close: async () => {
+      socket.disconnect();
+    },
+    send: (d) => {
+      socket.emit("message", d);
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
     }
   };
 }
@@ -387,60 +297,31 @@ function createStream(opts) {
     case "webrtc":
       adapter = webrtcAdapter(core, opts);
       break;
+    case "socketio":
+      adapter = socketioAdapter(core, opts);
+      break;
     default:
       throw new Error(`Unknown stream type: ${opts.type}`);
   }
   core.adapter = adapter;
-  return {
-    open: () => core.open(),
-    close: () => core.close(),
-    send: (d) => core.send(d),
-    on(evt, cb) {
-      return core.on(evt, cb);
-    },
-    off(evt, cb) {
-      return core.off(evt, cb);
-    },
-    get state() {
-      return core.state;
-    }
-  };
+  return adapter;
 }
 
 // src/hooks/vue.ts
 function useStream(opts) {
-  const api = createStream(opts);
+  const stream = (0, import_vue.ref)(null);
+  const status = (0, import_vue.ref)("idle");
   const messages = (0, import_vue.ref)([]);
-  const status = (0, import_vue.ref)(api.state.status);
-  const error = (0, import_vue.ref)(null);
-  const isOpen = (0, import_vue.ref)(api.state.isOpen);
-  const offOpen = api.on("open", () => {
-    isOpen.value = true;
-  });
-  const offClose = api.on("close", () => {
-    isOpen.value = false;
-  });
-  const offStatus = api.on("status", (s) => {
-    status.value = s;
-  });
-  const offError = api.on("error", (e) => {
-    error.value = e;
-  });
-  const offMsg = api.on("message", (m) => {
-    messages.value = [...messages.value, m];
-  });
   (0, import_vue.onMounted)(() => {
-    api.open();
+    const s = createStream(opts);
+    s.on("status", (st) => status.value = st);
+    s.on("message", (msg) => messages.value.push(msg));
+    stream.value = s;
   });
-  (0, import_vue.onUnmounted)(() => {
-    offOpen();
-    offClose();
-    offStatus();
-    offError();
-    offMsg();
-    api.close();
+  (0, import_vue.onBeforeUnmount)(() => {
+    stream.value?.close();
   });
-  return { ...api, messages, status, error, isOpen };
+  return { stream, status, messages };
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

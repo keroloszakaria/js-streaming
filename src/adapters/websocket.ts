@@ -1,35 +1,35 @@
 import { StreamCore } from "../core/Stream";
-import { BaseOptions } from "../core/types";
+import { BaseOptions, StreamAPI } from "../core/types";
 
 export interface WebSocketOptions extends BaseOptions {
   type: "websocket";
-  url: string;
-  protocols?: string | string[];
 }
 
-export function websocketAdapter(core: StreamCore, opts: WebSocketOptions) {
-  let ws: WebSocket | null = null;
+export function websocketAdapter(
+  core: StreamCore,
+  opts: WebSocketOptions
+): StreamAPI {
+  let socket: WebSocket | null = null;
 
   return {
-    open() {
-      ws = new WebSocket(opts.url, opts.protocols);
-      ws.onopen = () => core._onOpen();
-      ws.onclose = () => core._onClose();
-      ws.onerror = (ev: Event) => core._onError(new Error("WebSocket error"));
-      ws.onmessage = (ev: MessageEvent) => {
-        let data: unknown = ev.data;
-        try {
-          data = JSON.parse(ev.data);
-        } catch {}
-        core._onMessage(data);
-      };
+    open: async () => {
+      socket = new WebSocket(opts.url);
+
+      socket.onopen = () => core.emit("open");
+      socket.onclose = () => core.emit("close");
+      socket.onerror = (err) => core.emit("error", err as any);
+      socket.onmessage = (msg) => core.emit("message", msg.data);
     },
-    close() {
-      ws?.close();
+    close: async () => {
+      socket?.close();
     },
-    send(data: unknown) {
-      const payload = typeof data === "string" ? data : JSON.stringify(data);
-      ws?.send(payload);
+    send: (d: unknown) => {
+      socket?.send(typeof d === "string" ? d : JSON.stringify(d));
+    },
+    on: core.on.bind(core),
+    off: core.off.bind(core),
+    get state() {
+      return core.state;
     },
   };
 }
