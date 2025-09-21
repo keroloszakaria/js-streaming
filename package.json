@@ -1,6 +1,6 @@
 {
   "name": "js-streaming",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Unified streaming client for WebSocket, SSE, HTTP streaming, long-polling, HLS, and WebRTC.",
   "sideEffects": false,
   "type": "module",
@@ -60,12 +60,27 @@
     "url": "https://github.com/keroloszakaria/js-streaming.git"
   },
   "keywords": [
-    "stream",
+    "streaming-client",
+    "streaming",
+    "real-time",
     "websocket",
     "sse",
+    "server-sent-events",
+    "http-streaming",
+    "long-polling",
     "hls",
+    "hls.js",
     "webrtc",
+    "socket.io",
+    "typescript",
+    "react",
     "vue",
-    "react"
+    "hooks",
+    "composables",
+    "unified-api",
+    "data-stream",
+    "live",
+    "p2p",
+    "protocols"
   ]
 }
