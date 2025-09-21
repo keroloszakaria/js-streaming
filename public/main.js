@@ -1,5 +1,5 @@
 import { javascript, jsx, vue, hls, webrtc, advanced } from "./examples.js";
-import { createStream } from "../dist/index.mjs";
+import { createStream } from "https://cdn.jsdelivr.net/npm/js-streaming@0.1.4/dist/index.mjs";
 
 // Global variables
 let currentStream = null;
