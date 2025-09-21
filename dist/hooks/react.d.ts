@@ -1,4 +1,4 @@
-import { A as AnyOptions, S as StreamAPI, a as StreamStatus } from '../types-DjihEgEp.js';
+import { A as AnyOptions, S as StreamAPI, a as StreamStatus } from '../types-Djb2TFwW.js';
 
 declare function useStream(opts: AnyOptions): {
     stream: StreamAPI | null;

@@ -165,13 +165,35 @@ function longPollingAdapter(core, opts) {
 }
 
 // src/adapters/hls.ts
+import Hls from "hls.js";
 function hlsAdapter(core, opts) {
+  let hls = null;
   return {
     open: async () => {
+      if (!opts.video) {
+        throw new Error("HLS requires a video element in options.video");
+      }
+      if (opts.video.canPlayType("application/vnd.apple.mpegurl")) {
+        opts.video.src = opts.url;
+      } else if (Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource(opts.url);
+        hls.attachMedia(opts.video);
+      } else {
+        core.emit("error", new Error("HLS not supported in this browser"));
+        return;
+      }
       core.emit("open");
       core.emit("message", { url: opts.url });
     },
     close: async () => {
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+      if (opts.video) {
+        opts.video.src = "";
+      }
       core.emit("close");
     },
     send: () => {
@@ -283,4 +305,4 @@ function createStream(opts) {
 export {
   createStream
 };
-//# sourceMappingURL=chunk-V6YMHTDE.mjs.map
+//# sourceMappingURL=chunk-V2MBR6AI.mjs.map

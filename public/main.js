@@ -1,5 +1,6 @@
 import { javascript, jsx, vue, hls, webrtc, advanced } from "./examples.js";
-import { createStream } from "https://cdn.jsdelivr.net/npm/js-streaming@0.1.4/dist/index.mjs";
+import { createStream } from "../dist/index.mjs";
+// import { createStream } from "https://cdn.jsdelivr.net/npm/js-streaming@0.1.4/dist/index.mjs";
 
 // Global variables
 let currentStream = null;
@@ -10,13 +11,13 @@ let updateInterval = null;
 const protocols = {
   websocket: {
     name: "WebSocket",
-    url: "wss://echo.websocket.org",
+    url: "wss://ws.ifelse.io",
     canSend: true,
     hasVideo: false,
   },
   sse: {
     name: "Server-Sent Events",
-    url: "https://demo.mercure.rocks/.well-known/mercure",
+    url: "https://stream.wikimedia.org/v2/stream/recentchange",
     canSend: false,
     hasVideo: false,
   },
@@ -26,7 +27,7 @@ const protocols = {
     canSend: false,
     hasVideo: false,
   },
-  longpolling: {
+  "long-polling": {
     name: "Long Polling",
     url: "https://httpbin.org/delay/2",
     canSend: false,
@@ -87,230 +88,6 @@ const examples = {
     code: advanced,
   },
 };
-
-// Mock Stream class for demo - Fixed version
-class MockStream {
-  constructor(config) {
-    this.config = config;
-    this.isOpen = false;
-    this.listeners = {};
-    this.messageCount = 0;
-    this.mockInterval = null;
-    this.retryCount = 0;
-    this.reconnectTimeout = null;
-  }
-
-  on(event, callback) {
-    if (!this.listeners[event]) {
-      this.listeners[event] = [];
-    }
-    this.listeners[event].push(callback);
-    return () => this.off(event, callback);
-  }
-
-  off(event, callback) {
-    if (!this.listeners[event]) return;
-    const index = this.listeners[event].indexOf(callback);
-    if (index > -1) {
-      this.listeners[event].splice(index, 1);
-    }
-  }
-
-  emit(event, data) {
-    if (this.listeners[event]) {
-      this.listeners[event].forEach((cb) => {
-        try {
-          cb(data);
-        } catch (error) {
-          console.error("Error in event listener:", error);
-        }
-      });
-    }
-  }
-
-  async open() {
-    if (this.isOpen) return;
-
-    log("info", `Connecting to ${this.config.type.toUpperCase()}...`);
-    updateStatus("connecting");
-
-    try {
-      // Simulate connection delay
-      await new Promise((resolve) =>
-        setTimeout(resolve, 1000 + Math.random() * 1500)
-      );
-
-      // Simulate occasional failures (20% chance)
-      if (Math.random() < 0.2 && this.retryCount === 0) {
-        throw new Error("Connection timeout (demo simulation)");
-      }
-
-      this.isOpen = true;
-      this.retryCount = 0;
-      updateStatus("connected");
-      this.emit("open");
-      log("success", `Connected to ${this.config.type.toUpperCase()}`);
-
-      // Start mock data
-      this.startMockData();
-    } catch (error) {
-      this.handleConnectionError(error);
-    }
-  }
-
-  handleConnectionError(error) {
-    updateStatus("error");
-    this.emit("error", error);
-    log("error", error.message);
-
-    // Auto-reconnect logic
-    if (this.config.autoReconnect && this.retryCount < this.config.maxRetries) {
-      this.retryCount++;
-      const delay = Math.min(1000 * Math.pow(2, this.retryCount - 1), 10000);
-
-      log(
-        "warning",
-        `Retrying in ${delay}ms... (attempt ${this.retryCount}/${this.config.maxRetries})`
-      );
-
-      this.reconnectTimeout = setTimeout(() => {
-        this.open();
-      }, delay);
-    }
-  }
-
-  close() {
-    this.isOpen = false;
-
-    // Clear intervals and timeouts
-    if (this.mockInterval) {
-      clearInterval(this.mockInterval);
-      this.mockInterval = null;
-    }
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-
-    updateStatus("disconnected");
-    this.emit("close");
-    log("info", "Connection closed");
-  }
-
-  send(data) {
-    if (!this.isOpen) {
-      log("warning", "Cannot send: not connected");
-      return;
-    }
-
-    const message = typeof data === "string" ? data : JSON.stringify(data);
-    log("info", `Sent: ${message}`);
-
-    // Echo for WebSocket
-    if (this.config.type === "websocket") {
-      setTimeout(() => {
-        if (!this.isOpen) return;
-
-        const echo = {
-          type: "echo",
-          original: data,
-          timestamp: new Date().toISOString(),
-          id: generateId(),
-        };
-        this.emit("message", echo);
-        log("success", `Echo: ${JSON.stringify(echo)}`);
-        updateMessageCount();
-      }, 100 + Math.random() * 300);
-    }
-  }
-
-  startMockData() {
-    if (this.config.type === "hls") return; // HLS handles differently
-
-    const generators = {
-      websocket: () => ({
-        type: "chat",
-        user: randomChoice(["Alice", "Bob", "Charlie", "Diana"]),
-        message: randomChoice([
-          "Hello everyone!",
-          "How is everyone doing?",
-          "Great to be here!",
-          "Nice weather today",
-          "Anyone up for a chat?",
-        ]),
-        timestamp: new Date().toISOString(),
-        id: generateId(),
-      }),
-      sse: () => ({
-        event: "stock_update",
-        data: {
-          symbol: randomChoice(["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA"]),
-          price: (150 + Math.random() * 100).toFixed(2),
-          change: (Math.random() * 20 - 10).toFixed(2),
-          volume: Math.floor(Math.random() * 1000000),
-        },
-        timestamp: new Date().toISOString(),
-      }),
-      http: () => ({
-        chunk: Math.floor(Math.random() * 1000),
-        progress: Math.floor(Math.random() * 100),
-        size: Math.floor(Math.random() * 1024) + "KB",
-        timestamp: new Date().toISOString(),
-      }),
-      longpolling: () => ({
-        poll: "response",
-        data: Math.floor(Math.random() * 100),
-        status: randomChoice(["processing", "completed", "pending"]),
-        items: Math.floor(Math.random() * 50),
-        timestamp: new Date().toISOString(),
-      }),
-      webrtc: () => ({
-        peer: "message",
-        type: randomChoice(["data", "media", "control"]),
-        payload: "P2P communication data",
-        latency: Math.floor(Math.random() * 50) + "ms",
-        timestamp: new Date().toISOString(),
-      }),
-      socketio: () => ({
-        event: randomChoice(["chat", "notification", "update"]),
-        data: {
-          user: randomChoice(["Alice", "Bob", "Charlie"]),
-          message: randomChoice([
-            "Hello from Socket.IO!",
-            "This is a test event",
-            "Real-time update received",
-          ]),
-        },
-        timestamp: new Date().toISOString(),
-      }),
-    };
-
-    const generator = generators[this.config.type] || generators.websocket;
-
-    this.mockInterval = setInterval(() => {
-      if (!this.isOpen) return;
-
-      const message = generator();
-      this.emit("message", message);
-
-      const preview = JSON.stringify(message).substring(0, 100);
-      log(
-        "success",
-        `Received: ${preview}${preview.length === 100 ? "..." : ""}`
-      );
-      updateMessageCount();
-    }, 2000 + Math.random() * 4000);
-  }
-}
-
-// Utility functions
-function randomChoice(array) {
-  return array[Math.floor(Math.random() * array.length)];
-}
-
-function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
 
 // UI Helper functions - Fixed versions
 function log(type, message) {
@@ -420,9 +197,7 @@ function switchProtocol(protocolName) {
   }
 
   // Disconnect current stream
-  if (currentStream) {
-    disconnect();
-  }
+  if (currentStream) disconnect();
 
   log("info", `Switched to ${protocol.name}`);
 }
@@ -449,16 +224,12 @@ async function connect() {
   }
 
   try {
-    if (protocol === "hls") {
-      await connectHLS({ url });
-      return;
-    }
-
     currentStream = createStream({
       type: protocol, // "websocket" | "sse" | "http" | "long-polling" | "hls" | "webrtc" | "socketio"
       url,
       autoReconnect,
       maxRetries,
+      video: document.getElementById("videoPlayer"), // 🟢 مهم عشان HLS
     });
 
     currentStream.on("open", () => {
@@ -479,7 +250,6 @@ async function connect() {
       updateStatus("error");
     });
 
-    // 🟢 Events
     currentStream.on("message", (msg) => {
       log("success", `Message: ${JSON.stringify(msg)}`);
       updateMessageCount();
@@ -488,78 +258,6 @@ async function connect() {
     await currentStream.open();
   } catch (error) {
     log("error", `Connection failed: ${error.message}`);
-  }
-}
-
-async function connectHLS(config) {
-  const video = document.getElementById("videoPlayer");
-  if (!video) {
-    log("error", "Video element not found");
-    return;
-  }
-
-  try {
-    if (video.canPlayType("application/vnd.apple.mpegURL")) {
-      // Native HLS support (Safari)
-      video.src = config.url;
-
-      const onLoadedData = () => {
-        log("success", "HLS stream loaded (native support)");
-        updateStatus("connected");
-        startTime = Date.now();
-        toggleConnectButtons(true);
-        video.removeEventListener("loadeddata", onLoadedData);
-        video.removeEventListener("error", onError);
-      };
-
-      const onError = (e) => {
-        log("error", `HLS error: ${e.message || "Unknown error"}`);
-        updateStatus("error");
-        video.removeEventListener("loadeddata", onLoadedData);
-        video.removeEventListener("error", onError);
-      };
-
-      video.addEventListener("loadeddata", onLoadedData);
-      video.addEventListener("error", onError);
-    } else if (typeof Hls !== "undefined" && Hls.isSupported()) {
-      // hls.js support
-      const hls = new Hls();
-      hls.loadSource(config.url);
-      hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        log("success", "HLS stream loaded (hls.js)");
-        updateStatus("connected");
-        startTime = Date.now();
-        toggleConnectButtons(true);
-      });
-
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.warn("Network error, retrying manifest...");
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              console.warn("Media error, trying to recover...");
-              hls.recoverMediaError();
-              break;
-            default:
-              hls.destroy();
-              break;
-          }
-        }
-      });
-    } else {
-      log("info", "HLS.js would be loaded here for full browser support");
-      updateStatus("connected");
-      startTime = Date.now();
-      toggleConnectButtons(true);
-    }
-  } catch (error) {
-    log("error", `HLS setup failed: ${error.message}`);
-    updateStatus("error");
   }
 }
 
@@ -950,7 +648,6 @@ window.switchExample = switchExample;
 // Export for potential module usage
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    MockStream,
     protocols,
     examples,
     switchProtocol,

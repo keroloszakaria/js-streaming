@@ -20,7 +20,8 @@
     <script type="importmap">
       {
         "imports": {
-          "socket.io-client": "https://cdn.skypack.dev/socket.io-client"
+          "socket.io-client": "https://cdn.skypack.dev/socket.io-client",
+          "hls.js": "https://cdn.skypack.dev/hls.js"
         }
       }
     </script>
@@ -125,7 +126,7 @@
             <h3>HTTP Streaming</h3>
             <p>Chunked transfer encoding over HTTP connections.</p>
           </div>
-          <div class="protocol-card" data-protocol="longpolling">
+          <div class="protocol-card" data-protocol="long-polling">
             <div class="protocol-icon">🔄</div>
             <h3>Long Polling</h3>
             <p>Fallback strategy with intelligent polling intervals.</p>
@@ -165,7 +166,7 @@
             </button>
             <button class="demo-tab" data-protocol="sse">📡 SSE</button>
             <button class="demo-tab" data-protocol="http">🌊 HTTP</button>
-            <button class="demo-tab" data-protocol="longpolling">
+            <button class="demo-tab" data-protocol="long-polling">
               🔄 Long Poll
             </button>
             <button class="demo-tab" data-protocol="hls">🎥 HLS</button>

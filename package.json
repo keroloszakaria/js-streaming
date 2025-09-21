@@ -1,6 +1,6 @@
 {
   "name": "js-streaming",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Unified streaming client for WebSocket, SSE, HTTP streaming, long-polling, HLS, and WebRTC.",
   "sideEffects": false,
   "type": "module",

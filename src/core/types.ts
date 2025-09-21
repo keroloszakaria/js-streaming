@@ -42,6 +42,8 @@ export interface LongPollingOptions extends BaseOptions {
 
 export interface HLSOptions extends BaseOptions {
   type: "hls";
+  url: string;
+  video: HTMLVideoElement;
 }
 
 export interface WebRTCOptions extends BaseOptions {

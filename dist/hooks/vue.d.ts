@@ -1,5 +1,5 @@
 import * as vue from 'vue';
-import { A as AnyOptions, L as ListenerMap, a as StreamStatus, S as StreamAPI } from '../types-DjihEgEp.js';
+import { A as AnyOptions, L as ListenerMap, a as StreamStatus, S as StreamAPI } from '../types-Djb2TFwW.js';
 
 declare function useStream(opts: AnyOptions): {
     stream: vue.Ref<{

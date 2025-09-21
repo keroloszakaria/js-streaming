@@ -1,13 +1,24 @@
 # js-streaming
 
-[![npm version](https://img.shields.io/npm/v/js-streaming.svg)](https://www.npmjs.com/package/js-streaming)  
-[![Downloads](https://img.shields.io/npm/dm/js-streaming.svg)](https://www.npmjs.com/package/js-streaming)  
-[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)  
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-
-Universal, type-safe streaming client for JavaScript.  
-Supports **WebSocket, SSE, HTTP streaming, long-polling, HLS video, WebRTC, and Socket.IO** under one unified API.  
-Includes smart reconnection, typed events, React/Vue hooks, and cross-platform support.
+<p align="center">
+  <a href="https://www.npmjs.com/package/js-streaming">
+    <img src="https://img.shields.io/npm/v/js-streaming.svg" alt="npm version" />
+  </a>
+  <a href="https://www.npmjs.com/package/js-streaming">
+    <img src="https://img.shields.io/npm/dm/js-streaming.svg" alt="npm downloads" />
+  </a>
+  <a href="https://www.typescriptlang.org/">
+    <img src="https://img.shields.io/badge/TypeScript-Ready-blue.svg" alt="TypeScript" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License" />
+  </a>
+</p>
+<p align="center">
+  Universal, type-safe streaming client for JavaScript.  
+  Supports <b>WebSocket, SSE, HTTP streaming, long-polling, HLS video, WebRTC, and Socket.IO</b> under one unified API.  
+  Includes smart reconnection, typed events, React/Vue hooks, and cross-platform support.
+</p>
 
 ---
 

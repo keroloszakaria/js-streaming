@@ -1,7 +1,9 @@
 "use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -15,6 +17,14 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/hooks/react.ts
@@ -192,13 +202,35 @@ function longPollingAdapter(core, opts) {
 }
 
 // src/adapters/hls.ts
+var import_hls = __toESM(require("hls.js"), 1);
 function hlsAdapter(core, opts) {
+  let hls = null;
   return {
     open: async () => {
+      if (!opts.video) {
+        throw new Error("HLS requires a video element in options.video");
+      }
+      if (opts.video.canPlayType("application/vnd.apple.mpegurl")) {
+        opts.video.src = opts.url;
+      } else if (import_hls.default.isSupported()) {
+        hls = new import_hls.default();
+        hls.loadSource(opts.url);
+        hls.attachMedia(opts.video);
+      } else {
+        core.emit("error", new Error("HLS not supported in this browser"));
+        return;
+      }
       core.emit("open");
       core.emit("message", { url: opts.url });
     },
     close: async () => {
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+      if (opts.video) {
+        opts.video.src = "";
+      }
       core.emit("close");
     },
     send: () => {

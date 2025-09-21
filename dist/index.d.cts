@@ -1,5 +1,5 @@
-import { B as BaseOptions, W as WebRTCOptions, S as StreamAPI } from './types-DjihEgEp.cjs';
-export { A as AnyOptions, f as HLSOptions, H as HTTPStreamOptions, L as ListenerMap, e as LongPollingOptions, d as SSEOptions, g as SocketIOOptions, b as StreamState, a as StreamStatus, c as WebSocketOptions } from './types-DjihEgEp.cjs';
+import { B as BaseOptions, W as WebRTCOptions, S as StreamAPI } from './types-Djb2TFwW.cjs';
+export { A as AnyOptions, f as HLSOptions, H as HTTPStreamOptions, L as ListenerMap, e as LongPollingOptions, d as SSEOptions, g as SocketIOOptions, b as StreamState, a as StreamStatus, c as WebSocketOptions } from './types-Djb2TFwW.cjs';
 
 interface WebSocketOptions extends BaseOptions {
     type: "websocket";
@@ -20,6 +20,8 @@ interface LongPollingOptions extends BaseOptions {
 
 interface HLSOptions extends BaseOptions {
     type: "hls";
+    url: string;
+    video: HTMLVideoElement;
 }
 
 interface SocketIOOptions extends BaseOptions {
